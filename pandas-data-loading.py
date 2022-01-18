@@ -1,4 +1,5 @@
-import os
+import boto3
+import io
 from zipfile import ZipFile
 import pandas as pd
 import pandasql as psql
@@ -6,19 +7,22 @@ from sqlalchemy import create_engine
 from sqlalchemy.schema import CreateSchema
 from sqlalchemy_utils import database_exists, create_database
 
-def get_files(zip_file_path, input_files_location):
-    """Returns a list containing all the files
-    """
-    # ZIP FILE WAS PREVIOSLY EXTRACTED TO THE EXPECTED LOCATION
-    try:
-        return os.listdir(input_files_location)
-    # ZIP FILE HAS NOT BEEN EXTRACTED
-    except:
-        with ZipFile(zip_file_path, 'r') as zipObj:
-        # Extract all the contents of zip file in current directory
-            zipObj.extractall(input_files_location)
-        return os.listdir(input_files_location)
+## RETURNS S3 OBJECT
+def get_s3_object(session, bucket_name, s3_file_path):
+
+    s3 = session.resource("s3")
+    bucket = s3.Bucket(bucket_name)
+    return bucket.Object(s3_file_path)
+
+## ENSURE THE EXISTANCE OF DATABASE AND SCHEMA. CREATE THEM IF NOT EXIST.
+def initialize_postgresql(db_engine, db_schema):
+
+    if not database_exists(db_engine.url):
+        create_database(db_engine.url)
     
+    if not db_engine.dialect.has_schema(db_engine, db_schema):
+        db_engine.execute(CreateSchema(db_schema))
+
 ## READ CSV FILES INTO DATAFRAMES
 def read_input_files(zip_file, name):
     """ file_list: list contaning all the .csv files
@@ -31,14 +35,6 @@ def read_input_files(zip_file, name):
             df_list.append(pd.read_csv(zip_file.open(file)))
             
     return pd.concat(df_list)
-
-def initialize_postgresql(db_engine, db_schema):
-
-    if not database_exists(db_engine.url):
-        create_database(db_engine.url)
-    
-    if not db_engine.dialect.has_schema(db_engine, db_schema):
-        db_engine.execute(CreateSchema(db_schema))
 
 ## OPEN_EVENTS
 def ingest_open_events(zip_file, db_engine, db_schema):
@@ -148,14 +144,46 @@ def main(zip_file_id, db_options):
         print("Done!!")
 
 if '__main__':
+    
+    ## TO USE THIS PATH SET from_s3_uri TO FALSE
     zip_file_path = '../input-files.zip'
+    
+    ## SET TO TRUE TO READ FROM A S3 LOCATION
+    from_s3_uri = False
+
+    ## WILL BE USED ONLY IF from_s3_uri IS SET TO TRUE
+    session = boto3.session.Session(
+        aws_access_key_id="********", 
+        aws_secret_access_key="*************"
+    )
+    
+    s3_bucket_name = 'input-data-events'
+    
+    # PATH INSIDE THE BUCKET
+    s3_file_path = 'actual-path/input-files.zip'
+    # EXAMPLE: FOR PATH "s3://input-data-events/actual-path/input-files.zip"
+    # WILL BE "actual-path/input-files.zip"
+
+    # DATABASE CONNECTION
     db_options = {
         "db_type": "postgresql",
         "db_host": "127.0.0.1",
         "db_user": "postgres",
-        "db_pass": "*************",
+        "db_pass": "***********",
         "db_port": "5432",
         "db_database": "challenge",
         "db_schema": "events"
     }
-    main(zip_file_path, db_options)
+
+    #READING ZIP FILE FROM S3 LOCATION
+    if from_s3_uri:
+        print("Reading zip file from s3://{0}/{1}".format(s3_bucket_name, s3_file_path))
+        with io.BytesIO(get_s3_object(session, s3_bucket_name, s3_file_path).get()["Body"].read()) as tf:
+            # rewind the file
+            tf.seek(0)
+            main(tf, db_options)
+
+    #READING LOCAL ZIP FILE
+    else:
+        print("Reading local zip file at {0}".format(zip_file_path))
+        main(zip_file_path, db_options)
