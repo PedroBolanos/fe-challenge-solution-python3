@@ -146,7 +146,7 @@ def main(zip_file_id, db_options):
 if '__main__':
     
     ## TO USE THIS PATH SET from_s3_uri TO FALSE
-    zip_file_path = '../input-files.zip'
+    zip_file_path = 'input-files.zip'
     
     ## SET TO TRUE TO READ FROM A S3 LOCATION
     from_s3_uri = False
@@ -169,7 +169,7 @@ if '__main__':
         "db_type": "postgresql",
         "db_host": "127.0.0.1",
         "db_user": "postgres",
-        "db_pass": "***********",
+        "db_pass": "**********",
         "db_port": "5432",
         "db_database": "challenge",
         "db_schema": "events"
