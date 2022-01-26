@@ -1,5 +1,6 @@
 import boto3
 import io
+import os
 from zipfile import ZipFile
 import pandas as pd
 import pandasql as psql
@@ -169,7 +170,7 @@ if '__main__':
         "db_type": "postgresql",
         "db_host": "127.0.0.1",
         "db_user": "postgres",
-        "db_pass": "**********",
+        "db_pass": os.environ.get('DBPASS'),
         "db_port": "5432",
         "db_database": "challenge",
         "db_schema": "events"
