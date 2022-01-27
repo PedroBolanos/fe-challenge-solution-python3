@@ -19,7 +19,7 @@ Go to the bottom of *pandas-data-loading.py* file and find the **if "__main__"**
 7.  If running locally use command **python3 pandas-data-loading.py** to start its execution.
 
 ## Notice
-Database and Schema named under db_options will be created if not exist.
+Database and Schema will be created if not exist.
 
 ## Analytics
 All the queries to answer the questions about the data are comment (respective question) separated in *analytics.sql* file.
